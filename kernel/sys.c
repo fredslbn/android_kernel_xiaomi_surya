@@ -1182,6 +1182,11 @@ static int override_release(char __user *release, size_t len)
 	return ret;
 }
 
+#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
+extern struct static_key_false susfs_is_uname_spoof_buffer_set;
+extern void susfs_spoof_uname(struct new_utsname* tmp);
+#endif
+
 extern bool is_legacy_ebpf;
 SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
 {
@@ -1191,6 +1196,10 @@ SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
 
 	down_read(&uts_sem);
 	memcpy(&tmp, utsname(), sizeof(tmp));
+#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
+	if (static_branch_likely(&susfs_is_uname_spoof_buffer_set))
+		susfs_spoof_uname(&tmp);
+#endif	
 	if (!is_legacy_ebpf) {
 		if (!strncmp(current->comm, "bpfloader", 9) ||
 			!strncmp(current->comm, "netbpfload", 10) ||
